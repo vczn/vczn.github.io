@@ -177,8 +177,8 @@ unix;
 #  include <sys/param.h>
 #  if defined(BSD)
      // BSD
-#  end
-#end
+#  endif
+#endif
 ```
 
 
@@ -266,7 +266,7 @@ __GNUC__;
 #  include <sys/param.h>
 #  if defined(BSD)
      // BSD
-#  end
+#  endif
 #elif defined(_AIX)
   // AIX
 #elif defined(__hpux)
