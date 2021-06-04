@@ -1,5 +1,5 @@
 ---
-title: clang 命令总结
+title: clang 输出各种图形
 date: 2020-03-24 22:19:46
 tags: 
  - LLVM
@@ -55,8 +55,6 @@ clang -emit-llvm -S test.c     # generate test.ll
 **函数调用图(Call Graph)**:
 
 ```sh
-clang -cc1 -analyze -analyzer-chekcer=debug.DumpCFG test.c
-clang -cc1 -analyze -analyzer-chekcer=debug.DumpCFG test.ast
 clang -cc1 -analyze -analyzer-checker=debug.ViewCallGraph test.c
 # Windows
 clang -cc1 -analyze -analyzer-checker="debug.ViewCallGraph" test.c
@@ -68,6 +66,7 @@ clang -cc1 -analyze -analyzer-checker="debug.ViewCallGraph" test.c
 
 ```sh
 clang -cc1 -analyze -analyzer-chekcer=debug.DumpCFG test.c
+clang -cc1 -analyze -analyzer-chekcer=debug.DumpCFG test.ast
 clang -cc1 -analyze -analyzer-chekcer=debug.ViewCFG test.c
 clang -cc1 -analyze -analyzer-chekcer=debug.ViewCFG -analyze-function=foo test.c
 ```
