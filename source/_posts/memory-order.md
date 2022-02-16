@@ -9,8 +9,9 @@ categories:
 - Atomic
 ---
 
+从程序员使用的角度介绍 6 种 memory order
 
-
+<!-- more -->
 
 
 # 一、概述

@@ -8,6 +8,8 @@ categories:
 - CS
 ---
 
+简要介绍 ELF64 文件格式
+<!-- more -->
 
 
 # 一、Intro

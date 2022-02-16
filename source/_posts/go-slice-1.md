@@ -8,6 +8,10 @@ categories:
 - Golang
 ---
 
+深入分析使用 Go Slice 时遇到的一个坑
+
+<!-- more -->
+
 最近在学 Golang，发现 `Slice` 的一个坑。引发坑的原因是多个 `Slice` 可以共享底层的数据。
 
 Golang 的 `Slice` 类似于 C++ 的 `std::vector<T>`，功能上是动态数组。

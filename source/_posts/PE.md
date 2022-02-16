@@ -8,6 +8,10 @@ categories:
 - CS
 ---
 
+简要介绍 PE 文件格式
+
+<!-- more -->
+
 # 一、Intro
 
 PE(**P**rotable **E**xecutable) 是主要使用在 Windows 上目标代码格式，还有 UEFI 也是 PE 格式的。在 ELF64 中谈到 PE 和 ELF 都是 COFF 发展而来。也称为 PE/COFF 格式。32-bit 为 PE，64-bit 为 PE32+，基本就是 PE 扩展为 64-bit 地址格式。

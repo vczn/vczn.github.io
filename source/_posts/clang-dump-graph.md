@@ -1,5 +1,5 @@
 ---
-title: clang 输出各种图形
+title: Clang 输出各种图形
 date: 2020-03-24 22:19:46
 tags: 
  - LLVM
@@ -9,6 +9,9 @@ categories:
 - Clang
 ---
 
+Clang 生成 AST、LLVM IR、Call Graph、CFG 和 Exploded Graph
+
+<!-- more -->
 
 
 注：以下内容主要针对 Clang 4 之后的版本，而且不保证之后打破向后兼容性，以 Clang 的官方文档为主，本文主要为个人备忘使用  
