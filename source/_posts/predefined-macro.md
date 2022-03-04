@@ -235,13 +235,16 @@ __GNUC__;
 判断 C++ 版本
 
 ```cpp
-// 199711L -> CXX98
+#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201703L) || __cplusplus >= 201703L)
+  // HAS_CXX17
+#endif
+
+#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201402L) || __cplusplus >= 201402L)
+  // HAS_CXX14
+#endif
+
 #if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201103L) || __cplusplus >= 201103L)
-  // CXX11
-#elif ((defined(_MSVC_LANG) && _MSVC_LANG >= 201402L) || __cplusplus >= 201402L)
-  // CXX14
-#elif ((defined(_MSVC_LANG) && _MSVC_LANG >= 201703L) || __cplusplus >= 201703L)
-  // CXX17
+  // HAS_CXX11
 #endif
 ```
 

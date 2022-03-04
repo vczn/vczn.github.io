@@ -82,7 +82,7 @@ private:
 
 
 
-先从简单的开始看，因为在 `BumpPtrAllocator` 声明周期内永远不会释放内存，所以 `Deallocate` 什么都不做：
+先从简单的开始看，因为在 `BumpPtrAllocator` 生命周期内永远不会释放内存，所以 `Deallocate` 什么都不做：
 
 ```cpp
 // 因为排版原因和上面的代码拆分开写，实际在模板类中实现
