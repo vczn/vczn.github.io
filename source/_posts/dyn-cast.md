@@ -13,6 +13,12 @@ categories:
 
 
 
+分析 LLVM `isa` 和 `dyn_cast` 实现原理
+
+<!-- more -->
+
+
+
 ## 引言
 
 在 C++ 中，`dynamic_cast` 是四种类型转换运算符之一，表达式 `dynamic_cast<T>(v)` 的结果是将 `v` 转换为 `T` 类型的结果。`T` 应该是一个完整类型的指针或引用，或是可以带有 `cv` 限定的 `void` 指针，类型转换不应丢弃限定 `const`。
@@ -20,8 +26,6 @@ categories:
 `dynamic_cast` 主要用来表示动态类型转换语义，沿继承层级向上、向下以及侧向(菱形继承)，安全转换到其他类型的指针或引用。如果转型失败，`T` 是指针则返回 `nullptr`，`T` 是引用则抛出 `std::bad_cast` 异常。
 
 但是某些形式的 `dynamic_cast` 需要检查表达式的动态类型信息(依赖 RTTI)，会造成运行时开销，而且开启 RTTI 会导致二进制文件变大。在 LLVM/Clang 中，为了减小二进制体积，关闭了 RTTI，但是仍然有动态类型转型的需求，LLVM 实现了 `llvm::dyn_cast` 来进行动态类型转换。
-
-接下来我们对 `llvm::dyn_cast`, `llvm::isa`  等实现进行分析。
 
 
 
