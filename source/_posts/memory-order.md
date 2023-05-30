@@ -79,13 +79,49 @@ void getValues(int& a, int& b) {
 }
 ```
 
-`memory_order_release`：确保当前线程中的读或写不能被重排到此**存储**后，也就是 2 之前的内存读写操作不能重排到 1 的后面
+`memory_order_release`：确保当前线程中的读或写不能被重排到此**存储**后，也就是 2 之前的内存读写操作不能重排到该存储后(1 不能重排到 2 后面)
 
 `memory_order_acquire`：确保当前线程中的读或写不能被重排到此**加载**前，其他 release 同一原子变量的线程的所有写入，能为当前线程所见，也就是 3 一定在 4 之前
 
 综上两点，如果语句 3 在 2 之后执行的话，也就能确保 4 一定在 1 之后，从而达到某些同步的目的
 
 <br>
+
+我们也可以修改为以下代码，来达到同步的目的
+
+```cpp
+#include <atomic>
+#include <cassert>
+#include <thread>
+
+std::atomic<bool> flag;
+int data;
+
+void setValue() {
+  data = 42; // 1
+  flag.store(true, std::memory_order_release);
+}
+
+void getValue() {
+  while (!flag.load(std::memory_order_acquire)) {}
+  assert(data == 42); // 2
+}
+
+int main() {
+  data = 0;
+  flag = false;
+  // ...
+  std::thread t1{setValue};
+  std::thread t2{getValue};
+  t1.join();
+  t2.join();
+  return 0;
+}
+```
+
+可以确保 2 在 1 之后执行，即 2 处的断言一定是成功的
+
+
 
 
 
