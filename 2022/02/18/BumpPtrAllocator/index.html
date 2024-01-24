@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 6.0.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css" integrity="sha256-mUZM63G8m73Mcidfrv5E+Y61y7a12O5mW4ezU3bxqW4=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"z1nke.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":false,"version":"8.10.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":true,"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":false,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"}}</script><script src="/js/config.js"></script>
+
+  <meta name="description" content="llvm::BumpPtrAllocator 源码分析">
+<meta property="og:type" content="article">
+<meta property="og:title" content="BumpPtrAllocator">
+<meta property="og:url" content="https://z1nke.github.io/2022/02/18/BumpPtrAllocator/index.html">
+<meta property="og:site_name" content="z1nke&#39;s notes">
+<meta property="og:description" content="llvm::BumpPtrAllocator 源码分析">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2022-02-18T12:18:13.000Z">
+<meta property="article:modified_time" content="2024-01-24T16:48:51.666Z">
+<meta property="article:author" content="z1nke">
+<meta property="article:tag" content="LLVM">
+<meta property="article:tag" content="Clang">
+<meta property="article:tag" content="Allocator">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://z1nke.github.io/2022/02/18/BumpPtrAllocator/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://z1nke.github.io/2022/02/18/BumpPtrAllocator/","path":"2022/02/18/BumpPtrAllocator/","title":"BumpPtrAllocator"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>BumpPtrAllocator | z1nke's notes</title>
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+<style>.darkmode--activated{--body-bg-color:#282828;--content-bg-color:#333;--card-bg-color:#555;--text-color:#ccc;--blockquote-color:#bbb;--link-color:#ccc;--link-hover-color:#eee;--brand-color:#ddd;--brand-hover-color:#ddd;--table-row-odd-bg-color:#282828;--table-row-hover-bg-color:#363636;--menu-item-bg-color:#555;--btn-default-bg:#222;--btn-default-color:#ccc;--btn-default-border-color:#555;--btn-default-hover-bg:#666;--btn-default-hover-color:#ccc;--btn-default-hover-border-color:#666;--highlight-background:#282b2e;--highlight-foreground:#a9b7c6;--highlight-gutter-background:#34393d;--highlight-gutter-foreground:#9ca9b6}.darkmode--activated img{opacity:.75}.darkmode--activated img:hover{opacity:.9}.darkmode--activated code{color:#69dbdc;background:0 0}button.darkmode-toggle{z-index:9999}.darkmode-ignore,img{display:flex!important}</style></head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">z1nke's notes</p>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">拟态是对个性的捍卫<br>而非放弃个性</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home"><a href="/" rel="section"><i class="home fa-fw"></i>首页</a></li>
+        <li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="tags fa-fw"></i>标签<span class="badge">15</span></a></li>
+        <li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="th fa-fw"></i>分类<span class="badge">6</span></a></li>
+        <li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="archive fa-fw"></i>归档<span class="badge">11</span></a></li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%B8%80%E3%80%81%E6%A6%82%E8%BF%B0"><span class="nav-number">1.</span> <span class="nav-text">一、概述</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BA%8C%E3%80%81%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90"><span class="nav-number">2.</span> <span class="nav-text">二、源码分析</span></a></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="z1nke"
+      src="https://avatars.githubusercontent.com/u/17972306?s=400&u=d8e618cc806b699b7d1045c3aa41ab94122a4fc5&v=4">
+  <p class="site-author-name" itemprop="name">z1nke</p>
+  <div class="site-description" itemprop="description">try, think, enjoy</div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">11</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">15</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author site-overview-item animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/z1nke" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;z1nke" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="/iamczn.cpp@gmail.com" title="E-Mail → iamczn.cpp@gmail.com"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://z1nke.github.io/2022/02/18/BumpPtrAllocator/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="https://avatars.githubusercontent.com/u/17972306?s=400&u=d8e618cc806b699b7d1045c3aa41ab94122a4fc5&v=4">
+      <meta itemprop="name" content="z1nke">
+      <meta itemprop="description" content="try, think, enjoy">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="z1nke's notes">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          BumpPtrAllocator
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2022-02-18 20:18:13" itemprop="dateCreated datePublished" datetime="2022-02-18T20:18:13+08:00">2022-02-18</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2024-01-25 00:48:51" itemprop="dateModified" datetime="2024-01-25T00:48:51+08:00">2024-01-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">分类于</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Clang/" itemprop="url" rel="index"><span itemprop="name">Clang</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <p><code>llvm::BumpPtrAllocator</code> 源码分析</p>
+<span id="more"></span>
+<h1 id="一、概述"><a href="#一、概述" class="headerlink" title="一、概述"></a>一、概述</h1><p>最近开始捣鼓一个玩具 C 语言编译器项目，打算不借助编译器相关的库，写一个基本完整的编译器。</p>
+<p>为了对各种类型、声明、语句、表达式等大量的较小对象快速分配内存，打算写一个内存池分配器来解决。毕竟不能闭门造车，这里参考 Clang 的解决方案，使用了 bump-pointer allocator 来分配这些对象的内存。</p>
+<p>之前没有听说过 bump-pointer allocator，在网上搜索了一番，找到 <a target="_blank" rel="noopener" href="https://web.stanford.edu/class/archive/cs/cs107/cs107.1222/lectures/14/Lecture14.pdf">CS107 Lecture14</a> 这个 PPT，对 bump-pointer allocator 有了一个大概的认知。bump-pointer allocator 仅在 allocate 时分配下一个可用内存地址，在 deallocate 时不执行任何操作。在 bump-pointer allocator 生命期结束时，回收所有分配出去的内存。</p>
+<p>接下来对 <code>llvm::BumpPtrAllocator</code> 进行源码分析。</p>
+<h1 id="二、源码分析"><a href="#二、源码分析" class="headerlink" title="二、源码分析"></a>二、源码分析</h1><p>下文代码主要参考 llvm 12.0.0 版本的代码。在 <code>include/llvm/Support/Allocator.h</code> 中，可以找到 <code>llvm::BumpPtrAllocator</code> 的定义：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="keyword">typedef</span> BumpPtrAllocatorImpl&lt;&gt; BumpPtrAllocator;</span><br></pre></td></tr></table></figure>
+<p>接下来跳转到 <code>BumpPtrAllocatorImpl</code> 中，首先列出一些接口方法以及主要成员变量：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span> AllocatorT = MallocAllocator, <span class="type">size_t</span> SlabSize = <span class="number">4096</span>,</span><br><span class="line">          <span class="type">size_t</span> SizeThreshold = SlabSize, <span class="type">size_t</span> GrowthDelay = <span class="number">128</span>&gt;</span><br><span class="line"><span class="keyword">class</span> BumpPtrAllocatorImpl</span><br><span class="line">    : <span class="keyword">public</span> AllocatorBase&lt;BumpPtrAllocatorImpl&lt;AllocatorT, SlabSize,</span><br><span class="line">                                                SizeThreshold, GrowthDelay&gt;&gt;,</span><br><span class="line">      <span class="keyword">private</span> AllocatorT &#123;</span><br><span class="line"><span class="keyword">public</span>:</span><br><span class="line">  <span class="built_in">BumpPtrAllocatprImpl</span>() = <span class="keyword">default</span>;</span><br><span class="line">  ~<span class="built_in">BumpPtrAllocatprImpl</span>();</span><br><span class="line">  </span><br><span class="line">  <span class="function"><span class="type">void</span> *<span class="title">Allocate</span><span class="params">(<span class="type">size_t</span> Size, Align Aligment)</span></span>;</span><br><span class="line">  <span class="function"><span class="type">void</span> <span class="title">Deallocate</span><span class="params">(<span class="type">const</span> <span class="type">void</span> *Ptr, <span class="type">size_t</span> Size, <span class="type">size_t</span> <span class="comment">/*Alignment*/</span>)</span></span>;</span><br><span class="line"><span class="keyword">private</span>:</span><br><span class="line"><span class="comment">//                                 Slabs</span></span><br><span class="line"><span class="comment">//  +-----------+-----------+-----------+------------------------------------</span></span><br><span class="line"><span class="comment">//  |   slab0   |   slab1   |   slab2   |                  ...    </span></span><br><span class="line"><span class="comment">//  +-----------+-----------+-----------+------------------------------------</span></span><br><span class="line"><span class="comment">//                          ^           ^</span></span><br><span class="line"><span class="comment">//                          |           |</span></span><br><span class="line"><span class="comment">//                         CurPtr      End</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">//                              CustomSizedSlabs:</span></span><br><span class="line"><span class="comment">// +-----------------------------+-----------+-------------------------------</span></span><br><span class="line"><span class="comment">// |         CSSlab0             |  CSSlab1  |               ...</span></span><br><span class="line"><span class="comment">// +-----------------------------+-----------+-------------------------------</span></span><br><span class="line"></span><br><span class="line">  <span class="type">char</span> *CurPtr = <span class="literal">nullptr</span>; <span class="comment">// 指向下一个空闲字节的指针</span></span><br><span class="line">  <span class="type">char</span> *End = <span class="literal">nullptr</span>;    <span class="comment">// 指向当前 Slab 的 End 指针</span></span><br><span class="line">  <span class="comment">// 普通的 Slabs</span></span><br><span class="line">  SmallVector&lt;<span class="type">void</span> *, <span class="number">4</span>&gt; Slabs;</span><br><span class="line">  <span class="comment">// 自定义大小的 slabs 为了满足过大的(SizeThreshold)内存分配请求</span></span><br><span class="line">  SmallVector&lt;std::pair&lt;<span class="type">void</span> *, <span class="type">size_t</span>&gt;, <span class="number">0</span>&gt; CustomSizedSlabs;</span><br><span class="line">  <span class="type">size_t</span> BytesAllocated = <span class="number">0</span>;    <span class="comment">// 已经分配了多少字节的内存</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">// 运行在 sanitizer 下在内存分配之间额外放置多少字节，虽然下面的代码剖析不会涉及它</span></span><br><span class="line">  <span class="comment">// sanitizer 全称是 AddressSanitizer(aka. ASan)，是内存错误的检测器，可以检测</span></span><br><span class="line">  <span class="comment">// 内存越界、释放后使用、使用无效栈地址、多次释放、内存泄漏等内存问题</span></span><br><span class="line">  <span class="comment">// 具体见 https://clang.llvm.org/docs/AddressSanitizer.html</span></span><br><span class="line">  <span class="type">size_t</span> RedZoneSize = <span class="number">1</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>先从简单的开始看，因为在 <code>BumpPtrAllocator</code> 生命周期内永远不会释放内存，所以 <code>Deallocate</code> 什么都不做：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 因为排版原因和上面的代码拆分开写，实际在模板类中实现</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">Deallocate</span><span class="params">(<span class="type">const</span> <span class="type">void</span> *Ptr, <span class="type">size_t</span> Size, <span class="type">size_t</span> <span class="comment">/*Alignment*/</span>)</span> </span>&#123;</span><br><span class="line">  <span class="comment">// Do nothing</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>接下来看 <code>Allocate</code> 方法：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 同样因排版原因，拆分到这里</span></span><br><span class="line"><span class="function"><span class="type">void</span> *<span class="title">Allocate</span><span class="params">(<span class="type">size_t</span> Size, Align Aligment)</span> </span>&#123;</span><br><span class="line">  BytesAllocated += Size;  <span class="comment">// 跟踪已经分配了多少字节</span></span><br><span class="line"></span><br><span class="line">  <span class="comment">// 计算内存对齐需要的字节数</span></span><br><span class="line">  <span class="type">size_t</span> Adjustment = <span class="built_in">offsetToAlignedAddr</span>(CurPtr, Aligment);</span><br><span class="line">  <span class="type">size_t</span> SizeToAllocate = Size;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 如果当前的 Slab 有足够内存，直接划分地址空间并返回</span></span><br><span class="line">  <span class="keyword">if</span> (Adjustment + SizeToAllocate &lt;= <span class="built_in">size_t</span>(End - CurPtr)) &#123;</span><br><span class="line">    <span class="type">char</span> *AlignedPtr = CurPtr + Adjustment;</span><br><span class="line">    CurPtr = AlignedPtr + SizeToAllocate;</span><br><span class="line">    <span class="keyword">return</span> AlignedPtr;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 当前 slab 没有足够的字节数，需要使用新的 Slab</span></span><br><span class="line">  <span class="comment">// 如果请求的内存字节数过大，不适合存放到普通 Slabs 中，所以使用自定义大小的 Slabs</span></span><br><span class="line">  <span class="type">size_t</span> PaddedSize = SizeToAllocate + Alignment.<span class="built_in">value</span>() - <span class="number">1</span>;</span><br><span class="line">  <span class="keyword">if</span> (PaddedSize &gt; SizeThreshold) &#123;</span><br><span class="line">    <span class="type">void</span> *NewSlab = AllocateT::<span class="built_in">Allocate</span>(PaddedSize, <span class="built_in">alignof</span>(std::<span class="type">max_align_t</span>));</span><br><span class="line">    CustomSizedSlabs.<span class="built_in">push_back</span>(std::<span class="built_in">make_pair</span>(NewSlab, PaddedSize));</span><br><span class="line"></span><br><span class="line">    <span class="type">uintptr_t</span> AlignedAddr = <span class="built_in">alignAddr</span>(NewSlab, Alignment);</span><br><span class="line">    <span class="type">char</span> *AlignedPtr = (<span class="type">char</span>*)AlignedAddr;</span><br><span class="line">    <span class="keyword">return</span> AlignedPtr;</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 否则，启用一个新的 Slab 并划分内存空间并返回</span></span><br><span class="line">  <span class="built_in">StartNewSlab</span>();</span><br><span class="line">  <span class="type">uintptr_t</span> AlignedAddr = <span class="built_in">alignAddr</span>(NewSlab, Alignment);</span><br><span class="line">  <span class="type">char</span> *AlignedPtr = (<span class="type">char</span>*)AlignedAddr;</span><br><span class="line">  CurPtr = AlignedPtr + SizeToAllocate;</span><br><span class="line">  <span class="keyword">return</span> AlignedPtr;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 启用新的 Slab</span></span><br><span class="line"><span class="comment">// 分配一块新的 Slab，注册到 Slabs 中，重置 CurPtr 和 End 指针即可</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">StartNewSlab</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="type">size_t</span> AllocatedSlabSize = <span class="built_in">computeSlabSize</span>(Slabs.<span class="built_in">size</span>());</span><br><span class="line">  <span class="type">void</span> *NewSlab =</span><br><span class="line">      AllocatorT::<span class="built_in">Allocate</span>(AllocatedSlabSize, <span class="built_in">alignof</span>(std::<span class="type">max_align_t</span>));</span><br><span class="line">  Slabs.<span class="built_in">push_back</span>(NewSlab);</span><br><span class="line">  CurPtr = (<span class="type">char</span> *)(NewSlab);</span><br><span class="line">  End = ((<span class="type">char</span> *)NewSlab) + AllocatedSlabSize;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>最后看一下析构函数：</p>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 被分配的内存的生命周期和 BumpPtrAllocator 的声明周期一致</span></span><br><span class="line"><span class="comment">// 析构函数释放注册到 Slabs 和 CustomSizedSlabs 中的内存</span></span><br><span class="line">~<span class="built_in">BumpPtrAllocatprImpl</span>() &#123;</span><br><span class="line">  <span class="built_in">DeallocateSlabs</span>(Slabs.<span class="built_in">begin</span>(), Slabs.<span class="built_in">end</span>());</span><br><span class="line">  <span class="built_in">DeallocateCustomSizedSlabs</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>实现起来非常简单，虽然浪费了一些内存，但是速度非常快。对于我们的场景使用 <code>BumpPtrAllocator</code> 非常合适。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          
+
+<div class="post-copyright">
+<ul>
+  <li class="post-copyright-author">
+      <strong>本文作者： </strong>z1nke
+  </li>
+  <li class="post-copyright-link">
+      <strong>本文链接：</strong>
+      <a href="https://z1nke.github.io/2022/02/18/BumpPtrAllocator/" title="BumpPtrAllocator">https://z1nke.github.io/2022/02/18/BumpPtrAllocator/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/zh-CN" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+          <div class="post-tags">
+              <a href="/tags/LLVM/" rel="tag"># LLVM</a>
+              <a href="/tags/Clang/" rel="tag"># Clang</a>
+              <a href="/tags/Allocator/" rel="tag"># Allocator</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2021/05/09/predefined-macro/" rel="prev" title="C++ 预定义宏与各种环境">
+                  <i class="fa fa-chevron-left"></i> C++ 预定义宏与各种环境
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2022/05/19/access-private/" rel="next" title="C++ 访问私有成员">
+                  C++ 访问私有成员 <i class="fa fa-chevron-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 
+  <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">z1nke</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+  
+
+
+
+
+  
+
+  <script class="next-config" data-name="enableMath" type="application/json">true</script><script class="next-config" data-name="mathjax" type="application/json">{"enable":true,"tags":"none","js":{"url":"https://cdn.jsdelivr.net/npm/mathjax@3.2.0/es5/tex-mml-chtml.js","integrity":"sha256-r+3itOMtGGjap0x+10hu6jW/gZCzxHsoKrOd7gyRSGY="}}</script>
+<script src="/js/third-party/math/mathjax.js"></script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/darkmode-js@1.5.7/lib/darkmode-js.min.js"></script>
+
+<script>
+var options = {
+  bottom: '64px',
+  right: 'unset',
+  left: '32px',
+  time: '0.5s',
+  mixColor: 'transparent',
+  backgroundColor: 'transparent',
+  buttonColorDark: '#100f2c',
+  buttonColorLight: '#fff',
+  saveInCookies: true,
+  label: '🌓',
+  autoMatchOsTheme: true
+}
+const darkmode = new Darkmode(options);
+window.darkmode = darkmode;
+darkmode.showWidget();
+</script>
+
+</body>
+</html>
