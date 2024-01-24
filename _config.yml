@@ -3,17 +3,17 @@
 ## Source: https://github.com/hexojs/hexo/
 
 # Site
-title: syn1w's notes
+title: z1nke's notes
 subtitle: 拟态是对个性的捍卫<br>而非放弃个性
 description: try, think, enjoy
 keywords:
-author: syn1w
+author: z1nke
 language: zh-CN
 timezone: Asia/Shanghai
 
 # URL
 ## If your site is put in a subdirectory, set url as 'http://yoursite.com/child' and root as '/child/'
-url: https://syn1w.github.io
+url: https://z1nke.github.io
 root: /
 permalink: :year/:month/:day/:title/
 permalink_defaults:
@@ -100,12 +100,12 @@ ignore:
 ## Themes: https://hexo.io/themes/
 theme: next
 social:
-    Github: https://github.com/syn1w
+    Github: https://github.com/z1nke
 since: 2018
 
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
   type: git
-  repository: https://github.com/syn1w/syn1w.github.io.git
+  repository: https://github.com/z1nke/z1nke.github.io.git
   branch: master
